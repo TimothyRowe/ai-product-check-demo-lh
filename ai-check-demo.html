@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>开发创建 - AI 检测 Demo</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --primary: #1677ff;
+            --success: #52c41a;
+            --warning: #faad14;
+            --error: #ff4d4f;
+            --bg: #f5f5f5;
+            --card-bg: #fff;
+            --border: #d9d9d9;
+            --text: #333;
+            --text-secondary: #666;
+            --header-bg: #001529;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); font-size: 13px; }
+
+        /* Header */
+        .header { background: var(--header-bg); color: #fff; padding: 0 24px; height: 48px; display: flex; align-items: center; justify-content: space-between; }
+        .header h1 { font-size: 15px; font-weight: 500; }
+        .header .breadcrumb { font-size: 12px; color: #ffffffa0; }
+
+        /* Main content */
+        .main { padding: 16px 24px; }
+        .page-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .page-title .tag { background: #e6f4ff; color: var(--primary); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 400; }
+
+        /* Form card */
+        .form-card { background: var(--card-bg); border-radius: 8px; padding: 20px 24px; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+        .form-section { margin-bottom: 20px; }
+        .form-section-title { font-size: 14px; font-weight: 600; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #f0f0f0; color: var(--text); }
+        .form-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px 24px; margin-bottom: 12px; }
+        .form-item { display: flex; flex-direction: column; gap: 4px; }
+        .form-item label { font-size: 12px; color: var(--text-secondary); }
+        .form-item label .required { color: var(--error); margin-right: 2px; }
+        .form-item input, .form-item select, .form-item textarea { border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; font-size: 13px; outline: none; transition: border-color 0.2s; }
+        .form-item input:focus, .form-item select:focus, .form-item textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(22,119,255,0.1); }
+        .form-item textarea { resize: vertical; min-height: 60px; }
+        .form-item.highlight input, .form-item.highlight select { border-color: var(--warning); background: #fffbe6; }
+
+        /* Footer buttons */
+        .form-footer { display: flex; justify-content: flex-end; gap: 12px; padding-top: 16px; border-top: 1px solid #f0f0f0; }
+        .btn { padding: 6px 16px; border-radius: 4px; border: 1px solid var(--border); background: #fff; cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; transition: all 0.2s; }
+        .btn:hover { border-color: var(--primary); color: var(--primary); }
+        .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .btn-primary:hover { background: #4096ff; }
+        .btn-success { background: var(--success); color: #fff; border-color: var(--success); }
+        .btn-success:hover { background: #73d13d; }
+
+        /* Modal overlay */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-overlay.show { display: flex; }
+
+        /* AI Detection modal */
+        .detect-modal { background: #fff; border-radius: 12px; padding: 32px 40px; text-align: center; min-width: 380px; box-shadow: 0 6px 16px rgba(0,0,0,0.12); }
+        .detect-modal .icon { font-size: 48px; margin-bottom: 16px; }
+        .detect-modal .icon.loading { color: var(--primary); animation: spin 1.5s linear infinite; }
+        .detect-modal .icon.done { color: var(--success); }
+        .detect-modal h3 { font-size: 16px; margin-bottom: 8px; }
+        .detect-modal p { color: var(--text-secondary); font-size: 13px; margin-bottom: 20px; }
+        .detect-modal .progress-bar { height: 4px; background: #f0f0f0; border-radius: 2px; margin-bottom: 20px; overflow: hidden; }
+        .detect-modal .progress-bar .fill { height: 100%; background: var(--primary); border-radius: 2px; transition: width 0.3s; }
+        .detect-modal .btn-group { display: flex; gap: 12px; justify-content: center; }
+
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        /* Report panel */
+        .report-panel { display: none; position: fixed; top: 60px; right: 20px; width: 420px; max-height: calc(100vh - 80px); background: #fff; border-radius: 8px; box-shadow: 0 6px 24px rgba(0,0,0,0.15); z-index: 999; overflow: hidden; flex-direction: column; }
+        .report-panel.show { display: flex; }
+        .report-header { padding: 14px 18px; background: #fafafa; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; }
+        .report-header h4 { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+        .report-header .close-btn { cursor: pointer; font-size: 18px; color: #999; }
+        .report-header .close-btn:hover { color: #333; }
+        .report-body { padding: 16px 18px; overflow-y: auto; flex: 1; }
+        .report-summary { display: flex; gap: 16px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #f0f0f0; }
+        .report-stat { text-align: center; }
+        .report-stat .num { font-size: 20px; font-weight: 700; }
+        .report-stat .num.error { color: var(--error); }
+        .report-stat .num.warning { color: var(--warning); }
+        .report-stat .num.info { color: var(--primary); }
+        .report-stat .label { font-size: 11px; color: var(--text-secondary); }
+
+        .report-item { padding: 12px; border-radius: 6px; margin-bottom: 10px; border: 1px solid #f0f0f0; }
+        .report-item.error { border-left: 3px solid var(--error); background: #fff2f0; }
+        .report-item.warning { border-left: 3px solid var(--warning); background: #fffbe6; }
+        .report-item.info { border-left: 3px solid var(--primary); background: #e6f4ff; }
+        .report-item .item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .report-item .item-title { font-weight: 600; font-size: 13px; }
+        .report-item .severity { font-size: 11px; padding: 1px 6px; border-radius: 3px; }
+        .report-item.error .severity { background: #fff2f0; color: var(--error); border: 1px solid #ffccc7; }
+        .report-item.warning .severity { background: #fffbe6; color: #d48806; border: 1px solid #ffe58f; }
+        .report-item.info .severity { background: #e6f4ff; color: var(--primary); border: 1px solid #91caff; }
+        .report-item .item-desc { color: var(--text-secondary); font-size: 12px; line-height: 1.6; }
+        .report-item .item-field { font-size: 11px; color: #999; margin-top: 4px; }
+        .report-item .item-actions { margin-top: 8px; display: flex; gap: 8px; }
+        .report-item .item-actions .btn { font-size: 11px; padding: 2px 8px; }
+
+        .report-footer { padding: 12px 18px; border-top: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; }
+        .report-footer .hint { font-size: 11px; color: #999; }
+
+        /* SKU/SPU sections */
+        .sku-section { margin-bottom: 16px; }
+        .sku-header { background: #f0f0f0; padding: 8px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .sku-header .sku-code { color: var(--primary); }
+        .sku-header .sku-name { color: var(--text-secondary); font-weight: 400; }
+        .spu-section { margin-bottom: 16px; }
+        .spu-header { background: #e6f4ff; padding: 8px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-bottom: 8px; color: var(--primary); }
+
+        /* Toast */
+        .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #fff; padding: 10px 20px; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: none; align-items: center; gap: 8px; z-index: 2000; font-size: 13px; }
+        .toast.show { display: flex; }
+        .toast.success { border-left: 3px solid var(--success); }
+        .toast.info { border-left: 3px solid var(--primary); }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>ERP 产品开发系统</h1>
+        <span class="breadcrumb">开发创建 / 编辑产品 / SPU-20260526-001</span>
+    </div>
+
+    <div class="main">
+        <div class="page-title">编辑开发创建 <span class="tag">AI 检测 Demo</span></div>
+
+        <div class="form-card">
+            <!-- SPU 基础信息 -->
+            <div class="form-section">
+                <div class="form-section-title"><i class="bi bi-box"></i> SPU 基础信息</div>
+                <div class="form-row">
+                    <div class="form-item">
+                        <label><span class="required">*</span>调研报告引用</label>
+                        <input type="text" value="MR-2026-0521 电钻类目调研" readonly style="background:#f5f5f5;">
+                    </div>
+                    <div class="form-item">
+                        <label><span class="required">*</span>产品名称</label>
+                        <input type="text" value="20V无刷电钻套装 含2电池68件套" id="field-name">
+                    </div>
+                    <div class="form-item">
+                        <label><span class="required">*</span>产品目录</label>
+                        <select><option>Industrial & Scientific > Power Drills</option></select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-item">
+                        <label><span class="required">*</span>开发类型</label>
+                        <select><option>新品开发</option><option>跟卖改良</option></select>
+                    </div>
+                    <div class="form-item">
+                        <label>供应商</label>
+                        <input type="text" value="东莞市XX电动工具有限公司">
+                    </div>
+                    <div class="form-item">
+                        <label>参考竞品ASIN</label>
+                        <input type="text" value="B0CG9LQSHG">
+                    </div>
+                </div>
+            </div>
+
+            <!-- SKU 商品参数 -->
+            <div class="form-section">
+                <div class="form-section-title"><i class="bi bi-tags"></i> SKU 商品参数</div>
+                <div class="form-row">
+                    <div class="form-item">
+                        <label><span class="required">*</span>搜索关键词</label>
+                        <input type="text" value="cordless drill, power drill 20v, electric drill set">
+                    </div>
+                    <div class="form-item">
+                        <label><span class="required">*</span>产品线</label>
+                        <select><option>电动工具</option></select>
+                    </div>
+                    <div class="form-item">
+                        <label>规格型号</label>
+                        <input type="text" value="CD-20V-68">
+                    </div>
+                </div>
+                <div class="form-row" style="grid-template-columns: 1fr;">
+                    <div class="form-item">
+                        <label>产品描述</label>
+                        <textarea id="field-desc">20V MAX无刷电钻，双速调节（0-450/0-1700 RPM），最大扭矩60N·m，配备2块2.0Ah锂电池，1小时快充，含68件钻头批头套装，LED工作灯，适用于家庭装修和专业施工。欧规充电器，220V输入。</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 物流资料 -->
+            <div class="form-section">
+                <div class="form-section-title"><i class="bi bi-truck"></i> 物流资料</div>
+                <div class="form-row">
+                    <div class="form-item">
+                        <label><span class="required">*</span>报关品名</label>
+                        <input type="text" value="Cordless Drill Kit">
+                    </div>
+                    <div class="form-item">
+                        <label><span class="required">*</span>材质</label>
+                        <input type="text" value="ABS+金属">
+                    </div>
+                    <div class="form-item" id="item-country">
+                        <label><span class="required">*</span>销售国家</label>
+                        <select id="field-country"><option value="US" selected>美国 (US)</option><option value="UK">英国 (UK)</option><option value="DE">德国 (DE)</option></select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-item" id="item-plug">
+                        <label><span class="required">*</span>插头类型</label>
+                        <select id="field-plug"><option value="EU" selected>欧插 (Type C/F)</option><option value="US">美插 (Type A/B)</option><option value="UK">英插 (Type G)</option></select>
+                    </div>
+                    <div class="form-item" id="item-voltage">
+                        <label><span class="required">*</span>额定电压</label>
+                        <select id="field-voltage"><option value="220V" selected>220V</option><option value="110V">110V</option><option value="110-240V">110-240V 宽电压</option></select>
+                    </div>
+                    <div class="form-item">
+                        <label><span class="required">*</span>是否含电池</label>
+                        <select id="field-battery"><option value="yes" selected>是 - 锂电池</option><option value="no">否</option></select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-item">
+                        <label>认证要求</label>
+                        <input type="text" value="UL, FCC" id="field-cert">
+                    </div>
+                    <div class="form-item">
+                        <label>包装尺寸(cm)</label>
+                        <input type="text" value="42 × 32 × 12">
+                    </div>
+                    <div class="form-item">
+                        <label>毛重(kg)</label>
+                        <input type="text" value="3.8">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="form-footer">
+                <button class="btn" onclick="doSave()"><i class="bi bi-save"></i> 暂存</button>
+                <button class="btn btn-primary" onclick="doSubmit()"><i class="bi bi-send"></i> 提交</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Detection Modal -->
+    <div class="modal-overlay" id="detectModal">
+        <div class="detect-modal">
+            <div class="icon loading" id="detectIcon"><i class="bi bi-arrow-repeat"></i></div>
+            <h3 id="detectTitle">AI 正在检测录入信息</h3>
+            <p id="detectDesc">正在对产品信息进行一致性校验，预计需要 2-5 分钟...</p>
+            <div class="progress-bar"><div class="fill" id="progressFill" style="width:0%"></div></div>
+            <div class="btn-group" id="detectBtns">
+                <button class="btn" onclick="skipDetect()">直接提交</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Panel -->
+    <div class="report-panel" id="reportPanel">
+        <div class="report-header">
+            <h4><i class="bi bi-clipboard-check"></i> AI 检测报告</h4>
+            <span class="close-btn" onclick="closeReport()"><i class="bi bi-x-lg"></i></span>
+        </div>
+        <div class="report-body">
+            <div class="report-summary">
+                <div class="report-stat"><div class="num error">3</div><div class="label">错误</div></div>
+                <div class="report-stat"><div class="num warning">1</div><div class="label">警告</div></div>
+                <div class="report-stat"><div class="num info">1</div><div class="label">建议</div></div>
+            </div>
+
+            <!-- SPU 级别问题 -->
+            <div class="spu-section">
+                <div class="spu-header"><i class="bi bi-box"></i> SPU 级别问题</div>
+                <div class="report-item warning">
+                    <div class="item-header">
+                        <span class="item-title">SPU产品名称过长</span>
+                        <span class="severity">警告</span>
+                    </div>
+                    <div class="item-desc">SPU名称"20V无刷电钻套装"建议控制在50字符内，当前52字符。</div>
+                    <div class="item-field">关联字段：SPU商品名称(中文)</div>
+                    <div class="item-actions">
+                        <button class="btn" onclick="handleItem(this)"><i class="bi bi-check-circle"></i> 已处理</button>
+                        <button class="btn" onclick="ignoreItem(this)"><i class="bi bi-dash-circle"></i> 忽略</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SKU 级别问题 -->
+            <div class="sku-section">
+                <div class="sku-header">
+                    <i class="bi bi-tag"></i>
+                    <span class="sku-code">MG260009801</span>
+                    <span class="sku-name">含2电池68件套 美规 · 美国</span>
+                </div>
+
+                <div class="report-item error">
+                    <div class="item-header">
+                        <span class="item-title">插头类型与销售国家不匹配</span>
+                        <span class="severity">错误</span>
+                    </div>
+                    <div class="item-desc">销售国家为<b>美国(US)</b>，但插头类型选择了<b>欧插(Type C/F)</b>。美国标准应使用 <b>美插(Type A/B)</b>。</div>
+                    <div class="item-field">关联字段：销售国家、插头类型</div>
+                    <div class="item-actions">
+                        <button class="btn" onclick="handleItem(this)"><i class="bi bi-check-circle"></i> 已处理</button>
+                        <button class="btn" onclick="ignoreItem(this)"><i class="bi bi-dash-circle"></i> 忽略</button>
+                    </div>
+                </div>
+
+                <div class="report-item error">
+                    <div class="item-header">
+                        <span class="item-title">额定电压与销售国家不匹配</span>
+                        <span class="severity">错误</span>
+                    </div>
+                    <div class="item-desc">销售国家为<b>美国(US)</b>，但额定电压选择了<b>220V</b>。美国标准电压为 <b>110V/120V</b>，建议改为110V或110-240V宽电压。</div>
+                    <div class="item-field">关联字段：销售国家、额定电压</div>
+                    <div class="item-actions">
+                        <button class="btn" onclick="handleItem(this)"><i class="bi bi-check-circle"></i> 已处理</button>
+                        <button class="btn" onclick="ignoreItem(this)"><i class="bi bi-dash-circle"></i> 忽略</button>
+                    </div>
+                </div>
+
+                <div class="report-item warning">
+                    <div class="item-header">
+                        <span class="item-title">产品描述中提及"欧规充电器"</span>
+                        <span class="severity">警告</span>
+                    </div>
+                    <div class="item-desc">产品描述中包含"欧规充电器，220V输入"，与销售国家美国不一致。建议核实充电器实际规格后修改对应字段。</div>
+                    <div class="item-field">关联字段：产品描述、插头类型、额定电压</div>
+                    <div class="item-actions">
+                        <button class="btn" onclick="handleItem(this)"><i class="bi bi-check-circle"></i> 已处理</button>
+                        <button class="btn" onclick="ignoreItem(this)"><i class="bi bi-dash-circle"></i> 忽略</button>
+                    </div>
+                </div>
+
+                <div class="report-item info">
+                    <div class="item-header">
+                        <span class="item-title">含锂电池建议补充UN38.3认证</span>
+                        <span class="severity">建议</span>
+                    </div>
+                    <div class="item-desc">产品含锂电池，当前认证填写为"UL, FCC"。跨境物流通常要求提供 <b>UN38.3</b> 和 <b>MSDS</b> 认证文件，建议补充。</div>
+                    <div class="item-field">关联字段：是否含电池、认证要求</div>
+                    <div class="item-actions">
+                        <button class="btn" onclick="handleItem(this)"><i class="bi bi-check-circle"></i> 已处理</button>
+                        <button class="btn" onclick="ignoreItem(this)"><i class="bi bi-dash-circle"></i> 忽略</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="report-footer">
+            <span class="hint"><i class="bi bi-info-circle"></i> AI 检测结果仅供参考，不影响提交</span>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+    let detectTimer = null;
+    let progress = 0;
+
+    function showToast(msg, type = 'success') {
+        const t = document.getElementById('toast');
+        t.className = 'toast show ' + type;
+        t.innerHTML = `<i class="bi bi-${type === 'success' ? 'check-circle-fill' : 'info-circle-fill'}" style="color:var(--${type})"></i> ${msg}`;
+        setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
+    function doSave() {
+        showToast('暂存成功');
+    }
+
+    function doSubmit() {
+        document.getElementById('detectModal').classList.add('show');
+        document.getElementById('detectIcon').innerHTML = '<i class="bi bi-arrow-repeat"></i>';
+        document.getElementById('detectIcon').className = 'icon loading';
+        document.getElementById('detectTitle').textContent = 'AI 正在检测录入信息';
+        document.getElementById('detectDesc').textContent = '正在对产品信息进行一致性校验，预计需要 2-5 分钟...';
+        document.getElementById('detectBtns').innerHTML = '<button class="btn" onclick="skipDetect()">直接提交</button>';
+        progress = 0;
+        document.getElementById('progressFill').style.width = '0%';
+        simulateDetection();
+    }
+
+    function simulateDetection() {
+        detectTimer = setInterval(() => {
+            progress += Math.random() * 15 + 5;
+            if (progress >= 100) {
+                progress = 100;
+                clearInterval(detectTimer);
+                showDetectDone();
+            }
+            document.getElementById('progressFill').style.width = progress + '%';
+        }, 400);
+    }
+
+    function showDetectDone() {
+        document.getElementById('detectIcon').innerHTML = '<i class="bi bi-check-circle-fill"></i>';
+        document.getElementById('detectIcon').className = 'icon done';
+        document.getElementById('detectTitle').textContent = '检测完成，发现 5 条建议';
+        document.getElementById('detectDesc').textContent = '包含 1 条SPU问题、2 条错误、1 条警告、1 条建议';
+        document.getElementById('detectBtns').innerHTML = `
+            <button class="btn btn-primary" onclick="viewReport()"><i class="bi bi-clipboard-check"></i> 查看报告</button>
+            <button class="btn" onclick="skipDetect()">直接提交</button>
+        `;
+    }
+
+    function viewReport() {
+        document.getElementById('detectModal').classList.remove('show');
+        document.getElementById('reportPanel').classList.add('show');
+        // Highlight problematic fields
+        document.getElementById('item-plug').classList.add('highlight');
+        document.getElementById('item-voltage').classList.add('highlight');
+    }
+
+    function closeReport() {
+        document.getElementById('reportPanel').classList.remove('show');
+        document.querySelectorAll('.highlight').forEach(el => el.classList.remove('highlight'));
+    }
+
+    function skipDetect() {
+        clearInterval(detectTimer);
+        document.getElementById('detectModal').classList.remove('show');
+        showToast('已提交至开品审核流程');
+    }
+
+    function handleItem(btn) {
+        const item = btn.closest('.report-item');
+        item.style.opacity = '0.5';
+        item.style.pointerEvents = 'none';
+        item.querySelector('.item-header').insertAdjacentHTML('beforeend', '<span style="font-size:11px;color:var(--success);margin-left:8px;"><i class="bi bi-check-lg"></i> 已处理</span>');
+    }
+
+    function ignoreItem(btn) {
+        const item = btn.closest('.report-item');
+        item.style.opacity = '0.4';
+        item.style.pointerEvents = 'none';
+        item.querySelector('.item-header').insertAdjacentHTML('beforeend', '<span style="font-size:11px;color:#999;margin-left:8px;">已忽略</span>');
+    }
+
+    function submitAfterReview() {
+        closeReport();
+        showToast('已提交至开品审核流程');
+    }
+    </script>
+</body>
+</html>

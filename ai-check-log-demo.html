@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>开发创建列表 - AI 检测日志 Demo</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --primary: #1677ff;
+            --success: #52c41a;
+            --warning: #faad14;
+            --error: #ff4d4f;
+            --bg: #f5f5f5;
+            --card-bg: #fff;
+            --border: #d9d9d9;
+            --text: #333;
+            --text-secondary: #666;
+            --header-bg: #001529;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); font-size: 13px; }
+
+        .header { background: var(--header-bg); color: #fff; padding: 0 24px; height: 48px; display: flex; align-items: center; justify-content: space-between; }
+        .header h1 { font-size: 15px; font-weight: 500; }
+        .header .breadcrumb { font-size: 12px; color: #ffffffa0; }
+
+        .main { padding: 16px 24px; }
+        .page-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .page-title .tag { background: #e6f4ff; color: var(--primary); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 400; }
+
+        /* Table */
+        .table-card { background: var(--card-bg); border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.06); overflow: hidden; }
+        .table-toolbar { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; }
+        .table-toolbar .filters { display: flex; gap: 8px; align-items: center; }
+        .table-toolbar input, .table-toolbar select { border: 1px solid var(--border); border-radius: 4px; padding: 5px 10px; font-size: 12px; outline: none; }
+        .table-toolbar input:focus { border-color: var(--primary); }
+
+        table { width: 100%; border-collapse: collapse; }
+        thead { background: #fafafa; }
+        th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #f0f0f0; font-size: 12px; }
+        th { font-weight: 600; color: var(--text-secondary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; }
+        tr:hover { background: #f8faff; }
+
+        .sku-section { margin-bottom: 16px; }
+        .sku-header { background: #f0f0f0; padding: 8px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .sku-header .sku-code { color: var(--primary); }
+        .sku-header .sku-name { color: var(--text-secondary); font-weight: 400; }
+        .spu-section { margin-bottom: 16px; }
+        .spu-header { background: #e6f4ff; padding: 8px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-bottom: 8px; color: var(--primary); }
+
+        .status-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+        .status-badge.pass { background: #f6ffed; color: #389e0d; }
+        .status-badge.fail { background: #fff2f0; color: #cf1322; }
+        .status-badge.partial { background: #fffbe6; color: #d48806; }
+        .status-badge.pending { background: #f0f0f0; color: #666; }
+
+        .btn { padding: 4px 10px; border-radius: 4px; border: 1px solid var(--border); background: #fff; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; transition: all 0.2s; }
+        .btn:hover { border-color: var(--primary); color: var(--primary); }
+        .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .btn-primary:hover { background: #4096ff; }
+        .btn-sm { padding: 2px 8px; font-size: 11px; }
+        .btn-link { border: none; background: none; color: var(--primary); padding: 0; cursor: pointer; font-size: 12px; }
+        .btn-link:hover { text-decoration: underline; }
+
+        .detect-count { font-weight: 600; }
+        .detect-count .error { color: var(--error); }
+        .detect-count .warning { color: var(--warning); }
+        .detect-count .pass { color: var(--success); }
+
+        /* Drawer */
+        .drawer-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; }
+        .drawer-overlay.show { display: block; }
+        .drawer { position: fixed; top: 0; right: -600px; width: 600px; height: 100vh; background: #fff; z-index: 1001; transition: right 0.3s ease; display: flex; flex-direction: column; box-shadow: -4px 0 16px rgba(0,0,0,0.1); }
+        .drawer.show { right: 0; }
+        .drawer-header { padding: 16px 20px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; }
+        .drawer-header h3 { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        .drawer-header .close-btn { cursor: pointer; font-size: 20px; color: #999; border: none; background: none; }
+        .drawer-header .close-btn:hover { color: #333; }
+        .drawer-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
+        .drawer-footer { padding: 12px 20px; border-top: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; }
+        .drawer-footer .hint { font-size: 11px; color: #999; }
+
+        /* Log timeline */
+        .log-timeline { position: relative; }
+        .log-entry { position: relative; padding-left: 24px; margin-bottom: 20px; }
+        .log-entry::before { content: ''; position: absolute; left: 7px; top: 24px; bottom: -20px; width: 1px; background: #e8e8e8; }
+        .log-entry:last-child::before { display: none; }
+        .log-entry .dot { position: absolute; left: 0; top: 6px; width: 14px; height: 14px; border-radius: 50%; border: 2px solid; display: flex; align-items: center; justify-content: center; }
+        .log-entry .dot.error { border-color: var(--error); background: #fff2f0; }
+        .log-entry .dot.warning { border-color: var(--warning); background: #fffbe6; }
+        .log-entry .dot.pass { border-color: var(--success); background: #f6ffed; }
+
+        .log-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+        .log-meta .time { font-size: 12px; color: var(--text-secondary); }
+        .log-meta .trigger { font-size: 11px; padding: 1px 6px; border-radius: 3px; background: #f0f0f0; color: #666; }
+        .log-meta .operator { font-size: 11px; color: #999; }
+
+        .log-summary { font-size: 13px; font-weight: 500; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+        .log-summary .counts { display: flex; gap: 10px; font-size: 12px; font-weight: 400; }
+        .log-summary .counts span { display: flex; align-items: center; gap: 3px; }
+
+        .log-items { background: #fafafa; border-radius: 6px; padding: 10px 12px; }
+        .log-item { padding: 8px 0; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: flex-start; }
+        .log-item:last-child { border-bottom: none; }
+        .log-item .item-left { flex: 1; }
+        .log-item .item-title { font-size: 12px; font-weight: 500; margin-bottom: 2px; display: flex; align-items: center; gap: 6px; }
+        .log-item .item-title .severity-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+        .log-item .item-title .severity-dot.error { background: var(--error); }
+        .log-item .item-title .severity-dot.warning { background: var(--warning); }
+        .log-item .item-title .severity-dot.info { background: var(--primary); }
+        .log-item .item-desc { font-size: 11px; color: var(--text-secondary); }
+        .log-item .item-status { font-size: 11px; padding: 1px 6px; border-radius: 3px; white-space: nowrap; }
+        .log-item .item-status.handled { background: #f6ffed; color: #389e0d; }
+        .log-item .item-status.ignored { background: #f0f0f0; color: #999; }
+        .log-item .item-status.open { background: #fff2f0; color: var(--error); }
+
+        .log-toggle { cursor: pointer; color: var(--primary); font-size: 12px; margin-top: 6px; display: inline-flex; align-items: center; gap: 4px; }
+        .log-toggle:hover { text-decoration: underline; }
+
+        .log-items.collapsed .log-item:nth-child(n+3) { display: none; }
+
+        /* Compare badge */
+        .compare-badge { font-size: 10px; padding: 1px 5px; border-radius: 3px; background: #e6f4ff; color: var(--primary); margin-left: 4px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>ERP 产品开发系统</h1>
+        <span class="breadcrumb">开发创建 / 列表</span>
+    </div>
+
+    <div class="main">
+        <div class="page-title">开发创建列表 <span class="tag">AI 检测日志 Demo</span></div>
+
+        <div class="table-card">
+            <div class="table-toolbar">
+                <div class="filters">
+                    <input type="text" placeholder="搜索 SPU / 产品名称" style="width:200px;">
+                    <select>
+                        <option value="">AI检测状态：全部</option>
+                        <option value="pass">通过</option>
+                        <option value="fail">有问题</option>
+                        <option value="pending">未检测</option>
+                    </select>
+                    <select>
+                        <option value="">开发专员：全部</option>
+                        <option>张三</option>
+                        <option>李四</option>
+                        <option>王五</option>
+                    </select>
+                </div>
+                <div>
+                    <button class="btn btn-primary"><i class="bi bi-plus"></i> 新建开发</button>
+                </div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>SPU编号</th>
+                        <th>产品名称</th>
+                        <th>开发专员</th>
+                        <th>SKU数量</th>
+                        <th>AI检测状态</th>
+                        <th>检测次数</th>
+                        <th>最近检测</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>MG2600098</td>
+                        <td>20V无刷电钻套装</td>
+                        <td>张三</td>
+                        <td>3个SKU</td>
+                        <td><span class="status-badge partial"><i class="bi bi-exclamation-circle-fill"></i> 有遗留</span></td>
+                        <td><span class="detect-count"><span class="error">3</span>次</span></td>
+                        <td>2026-05-30 14:22</td>
+                        <td>
+                            <button class="btn-link" onclick="openLog('MG2600098')"><i class="bi bi-clock-history"></i> 检测日志</button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>MG2600102</td>
+                        <td>工业级角磨机 125mm</td>
+                        <td>李四</td>
+                        <td>2个SKU</td>
+                        <td><span class="status-badge pass"><i class="bi bi-check-circle-fill"></i> 通过</span></td>
+                        <td><span class="detect-count"><span class="pass">2</span>次</span></td>
+                        <td>2026-05-30 11:05</td>
+                        <td>
+                            <button class="btn-link" onclick="openLog('MG2600102')"><i class="bi bi-clock-history"></i> 检测日志</button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>MG2600115</td>
+                        <td>家用无线吸尘器 V12 Pro</td>
+                        <td>王五</td>
+                        <td>1个SKU</td>
+                        <td><span class="status-badge fail"><i class="bi bi-x-circle-fill"></i> 未通过</span></td>
+                        <td><span class="detect-count"><span class="error">1</span>次</span></td>
+                        <td>2026-05-29 16:40</td>
+                        <td>
+                            <button class="btn-link" onclick="openLog('MG2600115')"><i class="bi bi-clock-history"></i> 检测日志</button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>MG2600128</td>
+                        <td>户外折叠露营桌 铝合金</td>
+                        <td>张三</td>
+                        <td>1个SKU</td>
+                        <td><span class="status-badge pending"><i class="bi bi-dash-circle"></i> 未检测</span></td>
+                        <td><span class="detect-count">0次</span></td>
+                        <td>—</td>
+                        <td>
+                            <button class="btn-link" style="color:#999;cursor:default;"><i class="bi bi-clock-history"></i> 检测日志</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Drawer Overlay -->
+    <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+
+    <!-- Log Drawer -->
+    <div class="drawer" id="logDrawer">
+        <div class="drawer-header">
+            <h3><i class="bi bi-clock-history"></i> AI 检测日志 <span id="drawerSpu" style="font-weight:400;font-size:13px;color:#666;"></span></h3>
+            <button class="close-btn" onclick="closeDrawer()"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="drawer-body" id="drawerBody"></div>
+        <div class="drawer-footer">
+            <span class="hint"><i class="bi bi-info-circle"></i> 每次编辑提交均触发独立检测，历史记录永久保留</span>
+            <button class="btn btn-sm" onclick="closeDrawer()">关闭</button>
+        </div>
+    </div>
+
+    <script>
+    const logData = {
+        'MG2600098': [
+            {
+                id: 3,
+                time: '2026-05-30 14:22',
+                trigger: '提交检测',
+                operator: '张三',
+                status: 'warning',
+                summary: '发现 1 条警告',
+                spuItems: [],
+                skuItems: [
+                    {
+                        sku: 'MG260009801',
+                        skuName: '含2电池68件套 美规',
+                        country: '美国',
+                        items: [
+                            { title: '含锂电池建议补充UN38.3认证', severity: 'warning', desc: '产品含锂电池，认证仅填写"UL, FCC, UN38.3"，建议同时补充MSDS文件', status: 'open', statusLabel: '待处理' }
+                        ]
+                    }
+                ]
+            },
+            {
+                id: 2,
+                time: '2026-05-29 17:35',
+                trigger: '提交检测',
+                operator: '张三',
+                status: 'error',
+                summary: '发现 2 条错误、1 条警告',
+                spuItems: [],
+                skuItems: [
+                    {
+                        sku: 'MG260009801',
+                        skuName: '含2电池68件套 美规',
+                        country: '美国',
+                        items: [
+                            { title: '额定电压与销售国家不匹配', severity: 'error', desc: '销售国家为美国，额定电压220V → 已改为110V', status: 'handled', statusLabel: '已处理' },
+                            { title: '产品描述中提及"欧规充电器"', severity: 'warning', desc: '描述中"欧规充电器，220V输入"与美国不一致 → 已修改描述', status: 'handled', statusLabel: '已处理' }
+                        ]
+                    },
+                    {
+                        sku: 'MG260009802',
+                        skuName: '含2电池68件套 欧规',
+                        country: '德国',
+                        items: [
+                            { title: '认证要求缺少CE标志', severity: 'error', desc: '销售国家为德国(EU)，必须有CE认证', status: 'handled', statusLabel: '已处理' }
+                        ]
+                    }
+                ]
+            },
+            {
+                id: 1,
+                time: '2026-05-28 10:12',
+                trigger: '提交检测',
+                operator: '张三',
+                status: 'error',
+                summary: '发现 1 条SPU错误、3 条SKU错误、1 条建议',
+                spuItems: [
+                    { title: 'SPU产品名称过长', severity: 'warning', desc: 'SPU名称"20V无刷电钻套装"建议控制在50字符内，当前52字符', status: 'ignored', statusLabel: '已忽略' }
+                ],
+                skuItems: [
+                    {
+                        sku: 'MG260009801',
+                        skuName: '含2电池68件套 美规',
+                        country: '美国',
+                        items: [
+                            { title: '插头类型与销售国家不匹配', severity: 'error', desc: '美国应使用美插(Type A/B)，当前为欧插 → 已改为美插', status: 'handled', statusLabel: '已处理' },
+                            { title: '额定电压与销售国家不匹配', severity: 'error', desc: '美国标准110V，当前220V', status: 'ignored', statusLabel: '已忽略' },
+                            { title: '含锂电池建议补充UN38.3认证', severity: 'info', desc: '跨境物流通常要求UN38.3和MSDS → 已补充UN38.3', status: 'handled', statusLabel: '已处理' }
+                        ]
+                    },
+                    {
+                        sku: 'MG260009802',
+                        skuName: '含2电池68件套 欧规',
+                        country: '德国',
+                        items: [
+                            { title: '包装尺寸未填写', severity: 'error', desc: '物流资料中包装尺寸为空，无法计算运费 → 已补充', status: 'handled', statusLabel: '已处理' }
+                        ]
+                    }
+                ]
+            }
+        ],
+        'MG2600102': [
+            {
+                id: 2,
+                time: '2026-05-30 11:05',
+                trigger: '提交检测',
+                operator: '李四',
+                status: 'pass',
+                summary: '全部通过，无问题',
+                spuItems: [],
+                skuItems: []
+            },
+            {
+                id: 1,
+                time: '2026-05-29 09:30',
+                trigger: '提交检测',
+                operator: '李四',
+                status: 'error',
+                summary: '发现 2 条错误',
+                spuItems: [],
+                skuItems: [
+                    {
+                        sku: 'MG260010201',
+                        skuName: '850W 欧规',
+                        country: '德国',
+                        items: [
+                            { title: '认证要求缺少CE标志', severity: 'error', desc: '销售国家为德国(EU)，必须有CE认证 → 已补充', status: 'handled', statusLabel: '已处理' }
+                        ]
+                    },
+                    {
+                        sku: 'MG260010202',
+                        skuName: '1200W 欧规',
+                        country: '德国',
+                        items: [
+                            { title: '认证要求缺少CE标志', severity: 'error', desc: '销售国家为德国(EU)，必须有CE认证 → 已补充', status: 'handled', statusLabel: '已处理' }
+                        ]
+                    }
+                ]
+            }
+        ],
+        'MG2600115': [
+            {
+                id: 1,
+                time: '2026-05-29 16:40',
+                trigger: '提交检测',
+                operator: '王五',
+                status: 'error',
+                summary: '发现 2 条错误',
+                spuItems: [],
+                skuItems: [
+                    {
+                        sku: 'MG260011501',
+                        skuName: '标准版 英规',
+                        country: '英国',
+                        items: [
+                            { title: '插头类型与销售国家不匹配', severity: 'error', desc: '英国应使用英插(Type G)，当前为欧插', status: 'open', statusLabel: '待处理' },
+                            { title: '毛重为0', severity: 'error', desc: '物流资料中毛重未填写，无法计算运费', status: 'open', statusLabel: '待处理' }
+                        ]
+                    }
+                ]
+            }
+        ]
+    };
+
+    function toggleSku(icon) {
+        const row = icon.closest('tr');
+        let nextRow = row.nextElementSibling;
+        const isExpanded = icon.classList.contains('expanded');
+
+        while (nextRow && nextRow.classList.contains('sku-row')) {
+            nextRow.style.display = isExpanded ? 'none' : 'table-row';
+            nextRow = nextRow.nextElementSibling;
+        }
+
+        icon.classList.toggle('expanded');
+    }
+
+    function openLog(spu) {
+        const data = logData[spu];
+        if (!data) return;
+
+        document.getElementById('drawerSpu').textContent = spu;
+        document.getElementById('drawerOverlay').classList.add('show');
+        document.getElementById('logDrawer').classList.add('show');
+
+        const body = document.getElementById('drawerBody');
+        body.innerHTML = renderTimeline(data, spu);
+    }
+
+    function renderTimeline(entries, spu) {
+        if (!entries.length) return '<p style="color:#999;text-align:center;padding:40px;">暂无检测记录</p>';
+
+        let html = '<div class="log-timeline">';
+        entries.forEach((entry, idx) => {
+            const dotClass = entry.status;
+            const isLatest = idx === 0;
+            const hasSpu = entry.spuItems && entry.spuItems.length > 0;
+            const hasSku = entry.skuItems && entry.skuItems.length > 0;
+
+            html += `<div class="log-entry">`;
+            html += `<div class="dot ${dotClass}"></div>`;
+            html += `<div class="log-meta">`;
+            html += `<span class="time">${entry.time}</span>`;
+            html += `<span class="trigger">${entry.trigger}</span>`;
+            html += `<span class="operator">操作人：${entry.operator}</span>`;
+            if (isLatest) html += `<span class="compare-badge">最新</span>`;
+            html += `</div>`;
+
+            html += `<div class="log-summary">`;
+            html += `<span>${entry.summary}</span>`;
+            if (hasSpu || hasSku) {
+                html += `<span class="counts">`;
+                const allItems = [...(entry.spuItems || []), ...(entry.skuItems || []).flatMap(s => s.items)];
+                const errors = allItems.filter(i => i.severity === 'error').length;
+                const warnings = allItems.filter(i => i.severity === 'warning').length;
+                const infos = allItems.filter(i => i.severity === 'info').length;
+                if (errors) html += `<span style="color:var(--error)"><i class="bi bi-x-circle-fill"></i> ${errors}</span>`;
+                if (warnings) html += `<span style="color:var(--warning)"><i class="bi bi-exclamation-circle-fill"></i> ${warnings}</span>`;
+                if (infos) html += `<span style="color:var(--primary)"><i class="bi bi-info-circle-fill"></i> ${infos}</span>`;
+                html += `</span>`;
+            }
+            html += `</div>`;
+
+            // SPU级别问题
+            if (hasSpu) {
+                html += `<div class="spu-section">`;
+                html += `<div class="spu-header"><i class="bi bi-box"></i> SPU 级别问题</div>`;
+                html += `<div class="log-items">`;
+                entry.spuItems.forEach(item => {
+                    html += `<div class="log-item">`;
+                    html += `<div class="item-left">`;
+                    html += `<div class="item-title"><span class="severity-dot ${item.severity}"></span>${item.title}</div>`;
+                    html += `<div class="item-desc">${item.desc}</div>`;
+                    html += `</div>`;
+                    html += `<span class="item-status ${item.status}">${item.statusLabel}</span>`;
+                    html += `</div>`;
+                });
+                html += `</div>`;
+                html += `</div>`;
+            }
+
+            // SKU级别问题
+            if (hasSku) {
+                entry.skuItems.forEach(skuData => {
+                    if (skuData.items.length > 0) {
+                        html += `<div class="sku-section">`;
+                        html += `<div class="sku-header">`;
+                        html += `<i class="bi bi-tag"></i>`;
+                        html += `<span class="sku-code">${skuData.sku}</span>`;
+                        html += `<span class="sku-name">${skuData.skuName} · ${skuData.country}</span>`;
+                        html += `</div>`;
+                        html += `<div class="log-items">`;
+                        skuData.items.forEach(item => {
+                            html += `<div class="log-item">`;
+                            html += `<div class="item-left">`;
+                            html += `<div class="item-title"><span class="severity-dot ${item.severity}"></span>${item.title}</div>`;
+                            html += `<div class="item-desc">${item.desc}</div>`;
+                            html += `</div>`;
+                            html += `<span class="item-status ${item.status}">${item.statusLabel}</span>`;
+                            html += `</div>`;
+                        });
+                        html += `</div>`;
+                        html += `</div>`;
+                    }
+                });
+            }
+
+            if (entry.status === 'pass') {
+                html += `<div style="padding:8px 12px;background:#f6ffed;border-radius:6px;color:#389e0d;font-size:12px;"><i class="bi bi-check-circle-fill"></i>所有检测项通过，AI检测仅供参考，请以erp流程审核结果为准！</div>`;
+            }
+
+            html += `</div>`;
+        });
+        html += '</div>';
+        return html;
+    }
+
+    function closeDrawer() {
+        document.getElementById('drawerOverlay').classList.remove('show');
+        document.getElementById('logDrawer').classList.remove('show');
+    }
+    </script>
+</body>
+</html>

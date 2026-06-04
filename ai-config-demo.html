@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI应用配置 - 开品资料AI检测</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        :root { --primary: #1677ff; --success: #52c41a; --warning: #faad14; --error: #ff4d4f; --border: #d9d9d9; --bg: #f5f5f5; --text: #333; --text-sec: #666; --header-bg: #001529; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); font-size: 13px; }
+        .header { background: var(--header-bg); color: #fff; padding: 0 24px; height: 48px; display: flex; align-items: center; gap: 24px; }
+        .header h1 { font-size: 14px; font-weight: 500; }
+        .header .tabs { display: flex; gap: 0; }
+        .header .tab { padding: 12px 16px; color: #ffffffa0; cursor: pointer; border-bottom: 2px solid transparent; font-size: 13px; }
+        .header .tab.active { color: #fff; border-bottom-color: var(--primary); }
+        .main { padding: 16px 24px; }
+
+        /* Table */
+        .config-table { background: #fff; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+        .config-table table { width: 100%; border-collapse: collapse; }
+        .config-table th { background: #fafafa; padding: 12px 16px; text-align: left; font-weight: 500; border-bottom: 1px solid #f0f0f0; }
+        .config-table td { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; }
+        .status-tag { padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+        .status-on { background: #f6ffed; color: #389e0d; border: 1px solid #b7eb8f; }
+        .status-off { background: #f5f5f5; color: #999; border: 1px solid #d9d9d9; }
+        .action-link { color: var(--primary); cursor: pointer; margin-right: 12px; font-size: 13px; }
+        .action-link:hover { text-decoration: underline; }
+
+        /* Modal */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; justify-content: center; align-items: flex-start; padding-top: 40px; }
+        .modal-overlay.show { display: flex; }
+        .modal { background: #fff; border-radius: 8px; width: 900px; max-height: calc(100vh - 80px); overflow: hidden; display: flex; flex-direction: column; }
+        .modal-header { background: var(--primary); color: #fff; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; }
+        .modal-header h3 { font-size: 15px; font-weight: 500; }
+        .modal-header .close-btn { background: rgba(255,255,255,0.2); border: none; color: #fff; width: 28px; height: 28px; border-radius: 4px; cursor: pointer; font-size: 14px; }
+        .modal-body { padding: 24px; overflow-y: auto; flex: 1; }
+        .modal-footer { padding: 14px 24px; border-top: 1px solid #f0f0f0; display: flex; justify-content: center; gap: 16px; }
+
+        /* Form elements */
+        .section-title { font-size: 14px; font-weight: 600; margin: 20px 0 12px; color: var(--text); }
+        .section-title:first-child { margin-top: 0; }
+        .form-row { display: grid; grid-template-columns: 100px 1fr; align-items: start; margin-bottom: 14px; gap: 12px; }
+        .form-row label { font-size: 13px; color: var(--text-sec); text-align: right; padding-top: 6px; }
+        .form-row select, .form-row input { border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; font-size: 13px; width: 100%; max-width: 400px; outline: none; }
+        .form-row select:focus, .form-row input:focus { border-color: var(--primary); }
+        .form-row textarea { border: 1px solid var(--border); border-radius: 4px; padding: 8px 10px; font-size: 12px; width: 100%; outline: none; resize: vertical; line-height: 1.6; font-family: inherit; }
+        .form-row textarea:focus { border-color: var(--primary); }
+        .char-count { text-align: right; font-size: 11px; color: #999; margin-top: 4px; }
+
+        /* Checkbox grid */
+        .checkbox-section { margin-bottom: 16px; }
+        .checkbox-section-header { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid #f0f0f0; margin-bottom: 8px; }
+        .checkbox-section-header span { font-size: 13px; font-weight: 500; color: var(--primary); }
+        .checkbox-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px 12px; padding: 4px 0; }
+        .checkbox-item { display: flex; align-items: center; gap: 4px; font-size: 12px; cursor: pointer; padding: 4px 0; }
+        .checkbox-item input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--primary); }
+
+        /* Rule blocks */
+        .rule-section { margin-bottom: 16px; border: 1px solid #f0f0f0; border-radius: 6px; overflow: hidden; }
+        .rule-header { background: #fafafa; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f0f0f0; }
+        .rule-header .title { font-size: 13px; font-weight: 500; }
+        .rule-header .priority { font-size: 11px; padding: 1px 6px; border-radius: 3px; }
+        .rule-header .p0 { background: #fff2f0; color: var(--error); }
+        .rule-header .p1 { background: #fff7e6; color: #d48806; }
+        .rule-header .p2 { background: #e6f4ff; color: var(--primary); }
+        .rule-body { padding: 10px 14px; }
+        .rule-body textarea { width: 100%; min-height: 80px; border: 1px solid var(--border); border-radius: 4px; padding: 8px; font-size: 12px; line-height: 1.6; resize: vertical; outline: none; font-family: inherit; }
+        .rule-body textarea:focus { border-color: var(--primary); }
+        .rule-fields { font-size: 11px; color: #999; margin-top: 6px; }
+
+        .btn { padding: 7px 20px; border-radius: 4px; border: 1px solid var(--border); background: #fff; cursor: pointer; font-size: 13px; }
+        .btn:hover { border-color: var(--primary); color: var(--primary); }
+        .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .btn-primary:hover { background: #4096ff; }
+
+        .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #fff; padding: 10px 20px; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: none; align-items: center; gap: 8px; z-index: 2000; font-size: 13px; border-left: 3px solid var(--success); }
+        .toast.show { display: flex; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1><i class="bi bi-grid"></i> ERP 产品开发系统</h1>
+        <div class="tabs">
+            <div class="tab">主页</div>
+            <div class="tab">商品列表</div>
+            <div class="tab">开发创建列表</div>
+            <div class="tab active">AI应用配置</div>
+        </div>
+    </div>
+
+    <div class="main">
+        <div class="config-table">
+            <table>
+                <thead><tr><th>序号</th><th>场景</th><th>当前模型</th><th>启用状态</th><th>操作</th></tr></thead>
+                <tbody>
+                    <tr>
+                        <td>1</td><td>刊登文案优化</td><td>deepseek-v4-pro</td>
+                        <td><span class="status-tag status-on">启用</span></td>
+                        <td><span class="action-link">查看</span><span class="action-link">编辑</span><span class="action-link">日志</span></td>
+                    </tr>
+                    <tr>
+                        <td>2</td><td>开品资料AI检测</td><td>deepseek-v4-pro</td>
+                        <td><span class="status-tag status-on">启用</span></td>
+                        <td><span class="action-link" onclick="openModal()">查看</span><span class="action-link" onclick="openModal()">编辑</span><span class="action-link">日志</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div class="modal-overlay" id="editModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>编辑 — 开品资料AI检测</h3>
+                <button class="close-btn" onclick="closeModal()"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="modal-body">
+                <!-- 配置选择 -->
+                <div class="section-title">配置选择</div>
+                <div class="form-row"><label>应用场景：</label><select><option>开品资料AI检测</option><option>刊登文案优化</option></select></div>
+                <div class="form-row"><label>选择模型：</label><select><option>deepseek-v4-pro</option><option>deepseek-v3</option><option>gpt-5.1</option></select></div>
+                <div class="form-row"><label>AI类型：</label><input type="text" value="DEEPSEEK" readonly style="background:#f5f5f5;max-width:400px;"></div>
+
+                <!-- 场景设定 -->
+                <div class="section-title">场景设定</div>
+                <div class="form-row">
+                    <label>角色设定：</label>
+                    <div style="width:100%">
+                        <textarea rows="3" id="rolePrompt">你是一位跨境电商产品合规审核专家，精通各国电气标准、产品认证要求、物流合规规范和知识产权风险识别。你的任务是对开发专员录入的产品开品资料进行一致性和合规性校验，输出结构化检测报告。</textarea>
+                        <div class="char-count"><span id="roleCount">78</span> / 500</div>
+                    </div>
+                </div>
+
+                <!-- 选择产品信息 -->
+                <div class="section-title">选择产品信息（作为检测输入）</div>
+
+                <div class="checkbox-section">
+                    <div class="checkbox-section-header"><span>SPU信息</span><label class="checkbox-item"><input type="checkbox" class="select-all"> 全选</label></div>
+                    <div class="checkbox-grid">
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 商品目录</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb"> SPU商品名称(中文)</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> SPU商品名称(英文)</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb"> 开发人员</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 是否季节产品</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 是否节庆产品</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb"> 开品备注</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 主竞品链接</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 平台类目</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb"> SPU商品图片</label>
+                    </div>
+                </div>
+
+                <div class="checkbox-section">
+                    <div class="checkbox-section-header"><span>SKU信息</span><label class="checkbox-item"><input type="checkbox" class="select-all"> 全选</label></div>
+                    <div class="checkbox-grid">
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 属性标签</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> SKU商品名称(中文)</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> SKU商品名称(英文)</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 是否定制</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 开发类型</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 关键词</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 商品参数</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 商品描述</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 卖点描述</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb"> 包装清单</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb"> 注意事项</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 是否有适配车型</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 产品线名称</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 是否工厂限价</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb"> 是否刷单SKU</label>
+                    </div>
+                </div>
+
+                <div class="checkbox-section">
+                    <div class="checkbox-section-header"><span>物流资料</span><label class="checkbox-item"><input type="checkbox" class="select-all" checked> 全选</label></div>
+                    <div class="checkbox-grid">
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 报关名称</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 材质(中文)</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 用途(中文)</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 目的仓订单属性</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 销售国家</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 是否能做商检</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 基础属性</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 插头属性</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 电压属性</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 电池属性</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 形态属性</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 违禁属性</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 特殊属性</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 附加属性</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 头程运输方式</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 插头型号</label>
+                    </div>
+                </div>
+
+                <div class="checkbox-section">
+                    <div class="checkbox-section-header"><span>合规信息</span><label class="checkbox-item"><input type="checkbox" class="select-all" checked> 全选</label></div>
+                    <div class="checkbox-grid">
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 品牌类型</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 品牌名称</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 是否有型号</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 是否有LOGO</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 是否侵权</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 是否违禁</label>
+                    </div>
+                </div>
+
+                <div class="checkbox-section">
+                    <div class="checkbox-section-header"><span>包装信息</span><label class="checkbox-item"><input type="checkbox" class="select-all"> 全选</label></div>
+                    <div class="checkbox-grid">
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 单个商品包装尺寸(CM)</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 单个商品包装毛重(KG)</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 单个商品净重(KG)</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 单个商品尺寸</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 外箱尺寸(CM)</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 外箱毛重(KG)</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 装箱规格PCS</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb"> 发货属性</label>
+                    </div>
+                </div>
+
+                <div class="checkbox-section">
+                    <div class="checkbox-section-header"><span>供应商信息</span><label class="checkbox-item"><input type="checkbox" class="select-all"> 全选</label></div>
+                    <div class="checkbox-grid">
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 采购单价</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 供应状态</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 订单交期(天)</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb" checked> 最小起订量</label>
+                        <label class="checkbox-item"><input type="checkbox" class="field-cb"> 供应商名称</label>
+                    </div>
+                </div>
+
+                <!-- 校验规则 -->
+                <div class="section-title">校验规则（按维度配置 Prompt）</div>
+
+                <div class="rule-section">
+                    <div class="rule-header"><span class="title">维度1：电气属性 × 销售国家一致性</span><span class="priority p0">P0 必检 · SKU级别</span></div>
+                    <div class="rule-body">
+                        <textarea>校验销售国家与插头类型、额定电压的匹配关系：
+- 美国(US)：标准插头 Type A/B，标准电压 110V/120V
+- 英国(UK)：标准插头 Type G，标准电压 230V
+- 德国/法国/意大利/西班牙(DE/FR/IT/ES)：标准插头 Type C/F，标准电压 220-230V
+- 澳洲(AU)：标准插头 Type I，标准电压 230V
+- 宽电压(110-240V)适用所有国家，不报错
+- 插头型号应与插头属性一致（如属性选美插但型号填欧标则报错）
+- 若产品描述中提及的电气规格与字段矛盾，输出"警告"
+- 若插头或电压与销售国家不匹配，输出"错误"级别</textarea>
+                        <div class="rule-fields">关联字段：销售国家、插头属性、插头型号、电压属性、商品描述</div>
+                    </div>
+                </div>
+
+                <div class="rule-section">
+                    <div class="rule-header"><span class="title">维度2：电池 × 运输 × 合规关联</span><span class="priority p1">P1 重要 · SKU级别</span></div>
+                    <div class="rule-body">
+                        <textarea>校验含电池产品的运输和认证合规：
+- 含锂电池 + 头程为纯空运：需确认是否符合航空运输标准，输出"警告"
+- 含锂电池但认证未提及 UN38.3/MSDS：输出"警告"
+- 含电池 + 目的国认证：US需FCC，欧洲需CE，额外需电池指令合规，输出"建议"
+- 电池属性标记有电池但违禁属性未标记含电/磁：输出"警告"
+- 电池属性为"无"但商品描述/卖点中提及电池、充电：输出"警告"</textarea>
+                        <div class="rule-fields">关联字段：电池属性、头程运输方式、违禁属性、认证获取渠道、销售国家、商品描述</div>
+                    </div>
+                </div>
+
+                <div class="rule-section">
+                    <div class="rule-header"><span class="title">维度3：物流形态 × 运输方式合规</span><span class="priority p1">P1 重要 · SKU级别</span></div>
+                    <div class="rule-body">
+                        <textarea>校验产品形态与运输方式的合规性：
+- 形态属性为液体/粉末/气体，头程含空运：需特殊申报，输出"错误"
+- 违禁属性标记含磁/含液等，但头程未选对应合规渠道：输出"错误"
+- 特殊属性有值（带压力容器、射频设备等），但是否能做商检为否：输出"警告"
+- 外箱尺寸/毛重超出空运限制但选了空运：输出"警告"</textarea>
+                        <div class="rule-fields">关联字段：形态属性、特殊属性、违禁属性、头程运输方式、是否能做商检、外箱尺寸、外箱毛重</div>
+                    </div>
+                </div>
+
+                <div class="rule-section">
+                    <div class="rule-header"><span class="title">维度4：包装尺寸 × 重量逻辑校验</span><span class="priority p0">P0 必检 · SKU级别</span></div>
+                    <div class="rule-body">
+                        <textarea>校验包装和重量数据的逻辑合理性：
+- 单个商品净重 > 单个商品包装毛重：不合理，输出"错误"
+- 商品尺寸任一维度 > 包装尺寸对应维度：不合理，输出"错误"
+- 外箱毛重应 ≈ 单品包装毛重 × 装箱PCS + 纸箱自重，偏差超30%：输出"警告"
+- 外箱尺寸应能容纳装箱PCS个单品包装，明显不合理：输出"警告"
+- 净重/尺寸为0，或单品超100KG等异常值：输出"错误"</textarea>
+                        <div class="rule-fields">关联字段：单个商品净重、单个商品尺寸、包装尺寸、包装毛重、外箱尺寸、外箱毛重、装箱规格PCS</div>
+                    </div>
+                </div>
+
+                <div class="rule-section">
+                    <div class="rule-header"><span class="title">维度5：合规信息 × 侵权风险</span><span class="priority p1">P1 重要 · SKU级别</span></div>
+                    <div class="rule-body">
+                        <textarea>校验品牌和知识产权风险：
+- 品牌名称命中知名品牌库（DeWalt/Milwaukee/Bosch/3M等），但是否侵权选"否"：输出"警告"
+- 是否有LOGO为"是"，但品牌类型/品牌名称为空：输出"警告"
+- 是否有型号为"是"，提醒核实型号是否为他人注册：输出"建议"
+- 合规信息标记"非违禁"，但物流资料违禁属性有标记：输出"错误"
+- 是否有适配车型为"是"，提醒确认适配描述是否涉及品牌侵权（汽配类适配品牌除外）：输出"建议"</textarea>
+                        <div class="rule-fields">关联字段：品牌类型、品牌名称、是否有型号、是否有LOGO、是否侵权、是否违禁、违禁属性、是否有适配车型</div>
+                    </div>
+                </div>
+
+                <div class="rule-section">
+                    <div class="rule-header"><span class="title">维度6：产品描述 × 结构化字段一致性</span><span class="priority p2">P2 辅助 · SKU级别</span></div>
+                    <div class="rule-body">
+                        <textarea>校验文本内容与结构化字段的一致性：
+- 销售国家为非英语国家(DE/FR/IT/ES)，但描述全英文：提醒确认本地化，输出"建议"
+- 关键词中出现与商品目录/产品线明显无关的词汇：输出"警告"
+- 标记为季节/节庆产品，但描述和关键词中无相关内容：输出"建议"
+- 描述中的参数（功率/电压/尺寸等）与商品参数字段矛盾：输出"警告"
+- SKU英文名中的产品词与商品目录不匹配：输出"警告"</textarea>
+                        <div class="rule-fields">关联字段：SKU商品名称(英文)、商品描述、卖点描述、关键词、商品目录、产品线名称、销售国家、是否季节产品、是否节庆产品</div>
+                    </div>
+                </div>
+
+                <div class="rule-section">
+                    <div class="rule-header"><span class="title">维度7：供应商 × 采购逻辑</span><span class="priority p2">P2 辅助 · SKU级别</span></div>
+                    <div class="rule-body">
+                        <textarea>校验供应商和采购信息的合理性：
+- 采购单价为0或明显异常（如小数点错位导致过高/过低）：输出"警告"
+- 是否工厂限价为"是"，但采购单价为空：输出"警告"
+- 订单交期超过90天或为0：输出"建议"
+- 供应状态为"停产/断货"但仍在提交开品：输出"警告"</textarea>
+                        <div class="rule-fields">关联字段：采购单价、供应状态、订单交期、最小起订量、是否工厂限价</div>
+                    </div>
+                </div>
+
+                <!-- 输出格式 -->
+                <div class="section-title">输出格式约束</div>
+                <div class="form-row">
+                    <label>输出格式：</label>
+                    <div style="width:100%">
+                        <textarea rows="28" id="outputFormat">请严格按以下JSON格式输出检测报告，不要输出其他内容：
+
+{
+  "spu_issues": [
+    {
+      "dimension": "维度名称",
+      "severity": "error|warning|info",
+      "title": "问题标题（15字以内）",
+      "description": "问题描述（说明哪些字段冲突、当前值是什么、正确值应该是什么）",
+      "related_fields": ["字段名1", "字段名2"]
+    }
+  ],
+  "sku_issues": [
+    {
+      "sku_code": "SKU编号",
+      "sku_name": "SKU名称",
+      "country": "销售国家",
+      "issues": [
+        {
+          "dimension": "维度名称",
+          "severity": "error|warning|info",
+          "title": "问题标题（15字以内）",
+          "description": "问题描述（说明哪些字段冲突、当前值是什么、正确值应该是什么）",
+          "related_fields": ["字段名1", "字段名2"]
+        }
+      ]
+    }
+  ],
+  "summary": "总结（一句话概括检测结果）"
+}
+
+【Few-shot 示例】
+
+示例1 - 发现多个问题：
+{
+  "spu_issues": [
+    {
+      "dimension": "SPU名称规范",
+      "severity": "warning",
+      "title": "SPU产品名称过长",
+      "description": "SPU名称"20V无刷电钻套装含2电池68件套专业版"共28字符，建议控制在20字符内以提升可读性",
+      "related_fields": ["SPU商品名称(中文)"]
+    }
+  ],
+  "sku_issues": [
+    {
+      "sku_code": "MG260009801",
+      "sku_name": "含2电池68件套 美规",
+      "country": "美国",
+      "issues": [
+        {
+          "dimension": "电气属性×销售国家",
+          "severity": "error",
+          "title": "插头类型与销售国家不匹配",
+          "description": "销售国家为美国(US)，但插头类型选择了欧插(Type C/F)。美国标准应使用美插(Type A/B)",
+          "related_fields": ["销售国家", "插头属性", "插头型号"]
+        },
+        {
+          "dimension": "电气属性×销售国家",
+          "severity": "error",
+          "title": "额定电压与销售国家不匹配",
+          "description": "销售国家为美国(US)，但额定电压选择了220V。美国标准电压为110V/120V，建议改为110V或110-240V宽电压",
+          "related_fields": ["销售国家", "电压属性"]
+        },
+        {
+          "dimension": "电池×运输×合规",
+          "severity": "info",
+          "title": "含锂电池建议补充UN38.3认证",
+          "description": "产品含锂电池，当前认证填写为"UL, FCC"。跨境物流通常要求提供UN38.3和MSDS认证文件，建议补充",
+          "related_fields": ["电池属性", "认证获取渠道"]
+        }
+      ]
+    },
+    {
+      "sku_code": "MG260009802",
+      "sku_name": "含2电池68件套 欧规",
+      "country": "德国",
+      "issues": [
+        {
+          "dimension": "合规信息×侵权风险",
+          "severity": "error",
+          "title": "认证要求缺少CE标志",
+          "description": "销售国家为德国(EU)，必须有CE认证。当前认证字段为空，请补充CE认证信息",
+          "related_fields": ["销售国家", "认证获取渠道"]
+        }
+      ]
+    }
+  ],
+  "summary": "发现1个SPU问题、3个SKU错误、1个建议"
+}
+
+示例2 - 未发现问题：
+{
+  "spu_issues": [],
+  "sku_issues": [],
+  "summary": "未发现异常"
+}
+
+示例3 - 仅SKU问题：
+{
+  "spu_issues": [],
+  "sku_issues": [
+    {
+      "sku_code": "MG260011501",
+      "sku_name": "标准版 英规",
+      "country": "英国",
+      "issues": [
+        {
+          "dimension": "包装尺寸×重量逻辑",
+          "severity": "error",
+          "title": "单个商品净重大于毛重",
+          "description": "单个商品净重为3.5KG，但包装毛重仅为3.2KG，不符合逻辑。毛重应大于净重",
+          "related_fields": ["单个商品净重(KG)", "单个商品包装毛重(KG)"]
+        }
+      ]
+    }
+  ],
+  "summary": "发现1个SKU错误"
+}
+
+【重要提示】
+1. 必须严格按照上述JSON格式输出，不要添加任何解释性文字
+2. 如果某个SKU没有问题，不要在sku_issues中包含该SKU
+3. severity只能是error、warning、info三个值之一
+4. description必须具体指出当前值和建议值
+5. 每个SKU的issues数组中至少要有1个问题，否则不要包含该SKU</textarea>
+                        <div class="char-count"><span id="outputCount">2156</span> / 3000</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal()">取 消</button>
+                <button class="btn btn-primary" onclick="saveConfig()">确 定</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"><i class="bi bi-check-circle-fill" style="color:var(--success)"></i> 保存成功</div>
+
+    <script>
+    function openModal() { document.getElementById('editModal').classList.add('show'); }
+    function closeModal() { document.getElementById('editModal').classList.remove('show'); }
+    function saveConfig() {
+        closeModal();
+        const t = document.getElementById('toast');
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 2500);
+    }
+    document.getElementById('editModal').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
+
+    // Select all logic
+    document.querySelectorAll('.select-all').forEach(cb => {
+        cb.addEventListener('change', function() {
+            const section = this.closest('.checkbox-section');
+            section.querySelectorAll('.field-cb').forEach(f => f.checked = this.checked);
+        });
+    });
+    </script>
+</body>
+</html>
