@@ -68,7 +68,6 @@
 
 | 项目 | 仓库 | 用途 |
 |------|------|------|
-| 数字化选品系统 | [ai-selection-demo-lh](https://github.com/TimothyRowe/ai-selection-demo-lh) (私有) | 独立大项目，5模块Demo |
 | AI技能共享平台 | [kte-skills-share-lh](https://github.com/TimothyRowe/kte-skills-share-lh) | 内部Skill平台Demo |
 | 本仓库 | ai-product-check-demo-lh | 日常需求原型统一部署 |
 
