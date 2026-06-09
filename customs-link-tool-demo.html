@@ -81,11 +81,6 @@
         .status-pushed { color:var(--success); font-weight:500; }
         .status-none { color:var(--text-t); }
         .copied-tip { position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#333; color:#fff; padding:6px 16px; border-radius:4px; font-size:13px; z-index:9999; display:none; }
-        .pagination { display:flex; align-items:center; justify-content:center; gap:8px; margin-top:16px; }
-        .page-btn { width:32px; height:32px; border:1px solid var(--border); border-radius:4px; background:var(--white); cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center; }
-        .page-btn.active { background:var(--primary); color:#fff; border-color:var(--primary); }
-        .page-btn:hover:not(.active) { border-color:var(--primary); color:var(--primary); }
-        .page-info { font-size:12px; color:var(--text-t); }
         .img-preview-overlay { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.85); z-index:2000; align-items:center; justify-content:center; flex-direction:column; gap:12px; cursor:pointer; }
         .img-preview-overlay.show { display:flex; }
         .img-preview-overlay img { max-width:80vw; max-height:70vh; border-radius:8px; }
@@ -114,12 +109,11 @@
             </div>
             <div class="progress-bar" id="progressBar"><div class="spinner"></div><span class="step-text" id="stepText"></span></div>
             <div class="result-section" id="resultSection">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><h3 style="font-size:14px;">匹配结果</h3><div style="display:flex;align-items:center;gap:12px;"><button class="btn-primary" style="height:28px;padding:0 12px;font-size:12px;background:var(--success);" onclick="pushAllLowest()">一键推送最低价链接</button><span id="resultCount" style="font-size:12px;color:var(--text-t);"></span></div></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><h3 style="font-size:14px;">匹配结果</h3><div style="display:flex;align-items:center;gap:12px;"><button class="btn-primary" style="height:28px;padding:0 12px;font-size:12px;background:var(--success);" onclick="pushAllLowest()">一键推送最低价链接</button><button class="btn-primary" style="height:28px;padding:0 12px;font-size:12px;background:var(--primary);" onclick="exportExcel()">导出 Excel</button><span id="resultCount" style="font-size:12px;color:var(--text-t);"></span></div></div>
                 <table class="result-table"><thead><tr><th>SKU</th><th>SKU主图</th><th>匹配商品</th><th>竞品主图</th><th>销售链接</th><th>价格(当地币)</th><th>操作</th><th>关务推送日志</th></tr></thead><tbody id="resultBody"></tbody></table>
-                <div class="pagination" id="pagination"></div>
                 <ul class="note">
                     <li>数据来源：Sorftime SimilarProductRealtimeRequest（以图搜图）</li>
-                    <li>实时抓取约5分钟，已过滤无价格链接，每SKU取价格最低前3条</li>
+                    <li>实时抓取约5分钟，已过滤无价格/无主图SKU，每SKU取价格最低前3条展示，不分页</li>
                     <li>"推送清关"按钮仅关务专员和产品开发有权限操作</li>
                     <li>推送后覆盖清关基础信息销售链接并记录操作人+时间</li>
                 </ul>
@@ -152,8 +146,6 @@
 <div class="copied-tip" id="copiedTip">已复制</div>
 <script>
 let skuList = ['KTE-CU-20435','KTE-CU-20436','KTE-HG-10082','KTE-AP-30011','KTE-AP-30015'];
-let currentPage = 1;
-const PAGE_SIZE = 20;
 const domains = {DE:'amazon.de',FR:'amazon.fr',IT:'amazon.it',ES:'amazon.es',UK:'amazon.co.uk',US:'amazon.com'};
 const skuImages = {'KTE-CU-20435':'https://placehold.co/48x48/e8f4e8/333?text=SKU1','KTE-CU-20436':'https://placehold.co/48x48/e8f0f8/333?text=SKU2','KTE-HG-10082':'https://placehold.co/48x48/f8f0e8/333?text=SKU3','KTE-AP-30011':'https://placehold.co/48x48/f0e8f8/333?text=SKU4','KTE-AP-30015':'https://placehold.co/48x48/f8e8e8/333?text=SKU5','KTE-CU-20440':'https://placehold.co/48x48/f0f8e8/333?text=SKU6','KTE-CU-20441':'https://placehold.co/48x48/e8e8f8/333?text=SKU7','KTE-HG-10083':'https://placehold.co/48x48/e8f8f0/333?text=SKU8'};
 
@@ -210,7 +202,7 @@ function startSearch() {
     const total=skuList.length;
     const steps=[`Step 1/2：为 ${total} 个SKU发起以图搜图请求...`,`Step 2/2：任务执行中，预计约5分钟...`];
     let step=0; text.textContent=steps[0];
-    const timer=setInterval(()=>{ step++; if(step<steps.length){text.textContent=steps[step];}else{clearInterval(timer);bar.classList.remove('show');btn.disabled=false;currentPage=1;showResults();}},2000);
+    const timer=setInterval(()=>{ step++; if(step<steps.length){text.textContent=steps[step];}else{clearInterval(timer);bar.classList.remove('show');btn.disabled=false;showResults();}},2000);
 }
 
 function showResults() {
@@ -221,10 +213,8 @@ function showResults() {
     let displayData=[];
     Object.keys(grouped).forEach(sku=>{grouped[sku].sort((a,b)=>a.price-b.price);displayData=displayData.concat(grouped[sku].slice(0,3));});
     const lowestBySku={}; displayData.forEach(r=>{if(!lowestBySku[r.sku]||r.price<lowestBySku[r.sku])lowestBySku[r.sku]=r.price;});
-    const totalPages=Math.ceil(displayData.length/PAGE_SIZE);
-    const pageData=displayData.slice((currentPage-1)*PAGE_SIZE, currentPage*PAGE_SIZE);
     let lastSku='';
-    document.getElementById('resultBody').innerHTML=pageData.map(r=>{
+    document.getElementById('resultBody').innerHTML=displayData.map(r=>{
         const url=`https://${domain}/dp/${r.asin}`;
         const skuImg=skuImages[r.sku]||'https://placehold.co/48/f0f0f0/999?text=?';
         const showSku=r.sku!==lastSku; lastSku=r.sku;
@@ -240,20 +230,9 @@ function showResults() {
             <td class="push-log-cell" style="font-size:11px;color:var(--text-t);max-width:160px;">—</td>
         </tr>`;
     }).join('');
-    document.getElementById('resultCount').textContent=`共 ${displayData.length} 条（${Object.keys(grouped).length}个SKU，每SKU前3）| 第${currentPage}/${totalPages||1}页`;
-    renderPagination(totalPages);
+    document.getElementById('resultCount').textContent=`共 ${displayData.length} 条（${Object.keys(grouped).length}个SKU，每SKU前3）`;
     document.getElementById('resultSection').classList.add('show');
 }
-
-function renderPagination(total) {
-    if(total<=1){document.getElementById('pagination').innerHTML='';return;}
-    let html='';
-    html+=`<button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹</button>`;
-    for(let i=1;i<=total;i++) html+=`<button class="page-btn ${i===currentPage?'active':''}" onclick="goPage(${i})">${i}</button>`;
-    html+=`<button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage===total?'disabled':''}>›</button>`;
-    document.getElementById('pagination').innerHTML=html;
-}
-function goPage(p) { const grouped={}; mockResults.filter(r=>skuList.includes(r.sku)).forEach(r=>{if(!grouped[r.sku])grouped[r.sku]=[];grouped[r.sku].push(r);}); let all=[]; Object.keys(grouped).forEach(s=>{grouped[s].sort((a,b)=>a.price-b.price);all=all.concat(grouped[s].slice(0,3));}); const total=Math.ceil(all.length/PAGE_SIZE); if(p<1||p>total)return; currentPage=p; showResults(); }
 
 function previewImage(src) { document.getElementById('previewImg').src=src; document.getElementById('previewDownload').href=src; document.getElementById('imgPreview').classList.add('show'); }
 function closeImgPreview() { document.getElementById('imgPreview').classList.remove('show'); }
@@ -289,6 +268,14 @@ function confirmPushAll() {
     btns.forEach(btn=>pushLink(btn,btn.dataset.sku,btn.dataset.asin,btn.dataset.price));
 }
 function closeConfirmPush() { document.getElementById('confirmPushModal').classList.remove('show'); }
+
+function exportExcel() {
+    const country = document.getElementById('countrySelect').selectedOptions[0].text.replace(/\s*\(.*\)/,'');
+    const now = new Date();
+    const ts = now.getFullYear()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+'_'+String(now.getHours()).padStart(2,'0')+String(now.getMinutes()).padStart(2,'0');
+    const filename = `竞品检索结果_${country}_${ts}.xlsx`;
+    alert(`[Demo] 导出文件：${filename}\n\n字段：SKU编码、SKU主图URL、匹配商品名、ASIN、销售链接、价格（当地币）、目的国、检索时间\n\n说明：最低价行标记★，导出范围为当前页面展示数据`);
+}
 
 function renderHistory() {
     document.getElementById('historyBody').innerHTML=historyData.map((h,i)=>`<tr><td>${h.time}</td><td>${h.user}</td><td>${h.count}</td><td>${h.country}</td><td>成功${h.success}/失败${h.fail}</td><td class="${h.pushed!=='0/'+h.success?'status-pushed':'status-none'}">${h.pushed} 已推送</td><td><button class="btn-detail" onclick="openDetailModal(${i})">查看详情</button></td></tr>`).join('');
@@ -330,15 +317,17 @@ renderHistory();
 <li><span class="tag-interaction">交互</span>最低价行：背景高亮（浅绿）+ 价格后标注"★最低"</li>
 <li><span class="tag-interaction">交互</span>SKU主图和竞品主图均支持点击放大预览 + 下载</li>
 <li><span class="tag-interaction">交互</span>销售链接完整展示，支持一键复制（📋）和跳转亚马逊（↗）</li>
-<li><span class="tag-interaction">交互</span>分页：每页20条数据，底部页码导航</li>
+<li><span class="tag-interaction">交互</span>不分页，检索结果一次性全量展示</li>
 </ul>
 
 <h3>三、推送清关 - 权限与逻辑</h3>
 <ul>
-<li><span class="tag-perm">权限</span>"推送清关"按钮仅 关务专员 + 产品开发 角色可见/可操作，其他角色隐藏或置灰</li>
+<li><span class="tag-perm">权限</span>"推送清关"按钮：关务专员 + 产品开发可操作，前端按ERP系统角色权限配置控制显示（已支持菜单/按钮/字段级权限）</li>
+<li><span class="tag-data">数据</span>操作人：取ERP系统当前登录用户昵称</li>
 <li><span class="tag-interaction">交互</span>单行推送：点击"推送清关"→ 该行最后一列实时写入推送日志（时间+操作人+原链接+新链接）</li>
 <li><span class="tag-interaction">交互</span>"一键推送最低价链接"：点击后弹出确认弹窗，展示待推送的SKU/ASIN/价格列表 + 警告"直接覆盖清关基础信息，不可撤销"。确认后批量执行</li>
-<li><span class="tag-data">数据</span>推送逻辑：调用清关基础信息更新接口，覆盖对应SKU的销售链接字段</li>
+<li><span class="tag-data">数据</span>推送逻辑：调用物流系统-清关基础信息-详情属性资料-清关审核模块，覆盖对应SKU的销售链接字段</li>
+<li><span class="tag-data">数据</span>销售链接展示规则：按时间降序展示最新3条推送记录</li>
 <li><span class="tag-data">数据</span>推送日志格式："产品库-销售链接推送覆盖 / SKU / 目的国 / 原销售链接 / 新销售链接+价格"</li>
 <li><span class="tag-data">数据</span>日志持久化：写入操作日志表，关联SKU+操作人+时间，检索日志中可查</li>
 </ul>
@@ -351,7 +340,27 @@ renderHistory();
 <li><span class="tag-data">数据</span>每条记录关联：检索时间、操作人、SKU列表、目的国、匹配成功/失败数、推送情况</li>
 </ul>
 
-<h3>五、2期规划</h3>
+<h3>五、边界场景处理</h3>
+<ul>
+<li><span class="tag-data">数据</span>SKU无主图：直接过滤掉，不计入前端显示个数（无主图无法以图搜图，后端静默跳过）</li>
+<li><span class="tag-interaction">交互</span>匹配结果为0：该SKU行展示"未匹配到竞品"灰色提示文字，不隐藏SKU</li>
+<li><span class="tag-data">数据</span>匹配结果无价格：直接过滤掉，不计入前端显示个数（与现有逻辑一致）</li>
+<li><span class="tag-interaction">交互</span>SKU不存在（ERP中查无此编码）：点击"搜索竞品"按钮时触发提示"以下SKU在系统中不存在：xxx"</li>
+<li><span class="tag-data">数据</span>重复SKU：查询自动去重，相同SKU仅执行一次检索</li>
+<li><span class="tag-data">数据</span>接口超时/失败：请后端评估重试机制和超时阈值，前端展示"检索失败，请重试"提示</li>
+</ul>
+
+<h3>六、导出Excel</h3>
+<ul>
+<li><span class="tag-interaction">交互</span>导出按钮与"一键推送最低价链接"并列，所有角色均可操作</li>
+<li><span class="tag-data">数据</span>导出范围：当前前端所展示的检索结果数据（非接口全量）</li>
+<li><span class="tag-data">数据</span>导出字段：SKU编码、SKU主图URL、匹配商品名、ASIN、销售链接、价格（当地币）、目的国、检索时间</li>
+<li><span class="tag-data">数据</span>文件名规则：竞品检索结果_{目的国}_{yyyyMMdd_HHmm}.xlsx</li>
+<li><span class="tag-interaction">交互</span>最低价行在Excel中标记★（价格字段前加★符号）</li>
+<li><span class="tag-perm">权限</span>无权限限制，所有角色均可导出</li>
+</ul>
+
+<h3>七、2期规划</h3>
 <ul>
 <li><span class="tag-phase2">2期</span>导入检索：支持Excel模板导入（字段：SKU编码、国家），导入后自动执行检索流程，交互与手动输入一致</li>
 <li><span class="tag-phase2">2期</span>工具扩展：竞品检索可复用为选品系统组件，支持更多维度的竞品筛选（价格区间、评分、销量等）</li>
